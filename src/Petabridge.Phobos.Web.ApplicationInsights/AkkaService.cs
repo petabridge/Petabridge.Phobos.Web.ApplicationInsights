@@ -19,7 +19,7 @@ using Petabridge.Cmd.Remote;
 using Phobos.Actor;
 using SerilogLogMessageFormatter = Akka.Logger.Serilog.SerilogLogMessageFormatter;
 
-namespace Petabridge.Phobos.Web
+namespace Petabridge.Phobos.Web.ApplicationInsights
 {
     public sealed class ChildActor : ReceiveActor
     {

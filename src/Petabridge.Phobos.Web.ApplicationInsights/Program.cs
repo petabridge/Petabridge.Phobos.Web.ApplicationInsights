@@ -7,7 +7,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
-namespace Petabridge.Phobos.Web
+namespace Petabridge.Phobos.Web.ApplicationInsights
 {
     public class Program
     {

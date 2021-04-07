@@ -6,7 +6,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Reflection;
 using Akka.Actor;
@@ -19,7 +18,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using OpenTracing;
 using OpenTracing.Util;
 using Petabridge.Tracing.ApplicationInsights;
@@ -28,9 +26,8 @@ using Petabridge.Tracing.ApplicationInsights.Util;
 using Phobos.Actor;
 using Phobos.Actor.Configuration;
 using Phobos.Tracing.Scopes;
-using Endpoint = Microsoft.AspNetCore.Http.Endpoint;
 
-namespace Petabridge.Phobos.Web
+namespace Petabridge.Phobos.Web.ApplicationInsights
 {
     public class Startup
     {
@@ -40,7 +37,7 @@ namespace Petabridge.Phobos.Web
         public const string AppInsightsInstrumentationKeyVariableName = "APP_INSIGHTS_INSTRUMENTATION_KEY";
 
         public static bool IsAppInsightsEnabled => string.IsNullOrEmpty(
-                System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName));
+            Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName));
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -62,7 +59,7 @@ namespace Petabridge.Phobos.Web
             // add the Telemetry configuration to our DI dependencies if App Insights is available
             if (IsAppInsightsEnabled)
             {
-                var appKey = System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
+                var appKey = Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
                 var config = new TelemetryConfiguration(appKey);
                 services.AddSingleton<TelemetryConfiguration>(config);
             }
@@ -85,27 +82,24 @@ namespace Petabridge.Phobos.Web
             services.AddMetrics(b =>
             {
                 var metrics = b.Configuration.Configure(o =>
-                    {
-                        o.GlobalTags.Add("host", Dns.GetHostName());
-                        o.DefaultContextLabel = "akka.net";
-                        o.Enabled = true;
-                        o.ReportingEnabled = true;
-                    });
+                {
+                    o.GlobalTags.Add("host", Dns.GetHostName());
+                    o.DefaultContextLabel = "akka.net";
+                    o.Enabled = true;
+                    o.ReportingEnabled = true;
+                });
 
                 if (IsAppInsightsEnabled)
-                {
                     metrics = metrics.Report.ToApplicationInsights(opts =>
                     {
-                        opts.InstrumentationKey = System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
+                        opts.InstrumentationKey =
+                            Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
                         opts.ItemsAsCustomDimensions = true;
                         opts.DefaultCustomDimensionName = "item";
                     });
-                }
                 else // report to console if AppInsights isn't enabled
-                {
                     metrics = metrics.Report.ToConsole();
-                }
-                
+
                 metrics.Build();
             });
             services.AddMetricsReportingHostedService();
@@ -118,7 +112,8 @@ namespace Petabridge.Phobos.Web
                 if (IsAppInsightsEnabled)
                 {
                     var telConfig = sp.GetRequiredService<TelemetryConfiguration>();
-                    var endpoint = new Tracing.ApplicationInsights.Endpoint(Assembly.GetEntryAssembly()?.GetName().Name, Dns.GetHostName(), null);
+                    var endpoint = new Tracing.ApplicationInsights.Endpoint(Assembly.GetEntryAssembly()?.GetName().Name,
+                        Dns.GetHostName(), null);
                     // name the service after the executing assembly
                     var tracer = new ApplicationInsightsTracer(telConfig, new ActorScopeManager(), new B3Propagator(),
                         new DateTimeOffsetTimeProvider(), endpoint);
@@ -129,7 +124,6 @@ namespace Petabridge.Phobos.Web
                 // use the GlobalTracer, otherwise
                 return GlobalTracer.Instance;
             });
-            
         }
 
         public static void ConfigureAkka(IServiceCollection services)

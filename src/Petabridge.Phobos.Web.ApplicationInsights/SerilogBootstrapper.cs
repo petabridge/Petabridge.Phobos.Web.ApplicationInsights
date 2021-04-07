@@ -14,7 +14,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 
-namespace Petabridge.Phobos.Web
+namespace Petabridge.Phobos.Web.ApplicationInsights
 {
     /// <summary>
     ///     Used to help load our Seq configuration in at application startup.
@@ -86,7 +86,7 @@ namespace Petabridge.Phobos.Web
                     "[{POD_NAME}][{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}",
                     theme: AnsiConsoleTheme.Literate)
                 .Filter.ByExcluding(HealthChecksNormalEvents); // Do not want lots of health check info logs in console
-                
+
             // Configure Serilog
             Log.Logger = loggerConfiguration.CreateLogger();
         }
