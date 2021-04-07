@@ -8,16 +8,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using Akka.Actor;
 using Akka.Bootstrap.Docker;
 using Akka.Configuration;
 using App.Metrics;
-using App.Metrics.Formatters.Prometheus;
-using Jaeger;
-using Jaeger.Reporters;
-using Jaeger.Samplers;
-using Jaeger.Senders;
-using Jaeger.Senders.Thrift;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -25,26 +21,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTracing;
+using OpenTracing.Util;
+using Petabridge.Tracing.ApplicationInsights;
+using Petabridge.Tracing.ApplicationInsights.Propagation;
+using Petabridge.Tracing.ApplicationInsights.Util;
 using Phobos.Actor;
 using Phobos.Actor.Configuration;
 using Phobos.Tracing.Scopes;
+using Endpoint = Microsoft.AspNetCore.Http.Endpoint;
 
 namespace Petabridge.Phobos.Web
 {
     public class Startup
     {
         /// <summary>
-        ///     Name of the <see cref="Environment" /> variable used to direct Phobos' Jaeger
-        ///     output.
-        ///     See https://github.com/jaegertracing/jaeger-client-csharp for details.
+        ///     Environment variables used to toggle App Insights / on off.
         /// </summary>
-        public const string JaegerAgentHostEnvironmentVar = "JAEGER_AGENT_HOST";
+        public const string AppInsightsInstrumentationKeyVariableName = "APP_INSIGHTS_INSTRUMENTATION_KEY";
 
-        public const string JaegerEndpointEnvironmentVar = "JAEGER_ENDPOINT";
-
-        public const string JaegerAgentPortEnvironmentVar = "JAEGER_AGENT_PORT";
-
-        public const int DefaultJaegerAgentPort = 6832;
+        public static bool IsAppInsightsEnabled => string.IsNullOrEmpty(
+                System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName));
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -63,11 +59,20 @@ namespace Petabridge.Phobos.Web
                 o.ConfigureGenericDiagnostics(c => { });
             });
 
-            // sets up Prometheus + ASP.NET Core metrics
+            // add the Telemetry configuration to our DI dependencies if App Insights is available
+            if (IsAppInsightsEnabled)
+            {
+                var appKey = System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
+                var config = new TelemetryConfiguration(appKey);
+                services.AddSingleton<TelemetryConfiguration>(config);
+            }
+
+
+            // sets up App Insights + ASP.NET Core metrics
             ConfigureAppMetrics(services);
 
-            // sets up Jaeger tracing
-            ConfigureJaegerTracing(services);
+            // sets up App Insights tracing
+            ConfigureTracing(services);
 
             // sets up Akka.NET
             ConfigureAkka(services);
@@ -85,63 +90,46 @@ namespace Petabridge.Phobos.Web
                         o.DefaultContextLabel = "akka.net";
                         o.Enabled = true;
                         o.ReportingEnabled = true;
-                    })
-                    .OutputMetrics.AsPrometheusPlainText()
-                    .Build();
+                    });
 
-                services.AddMetricsEndpoints(ep =>
+                if (IsAppInsightsEnabled)
                 {
-                    ep.MetricsTextEndpointOutputFormatter = metrics.OutputMetricsFormatters
-                        .OfType<MetricsPrometheusTextOutputFormatter>().First();
-                    ep.MetricsEndpointOutputFormatter = metrics.OutputMetricsFormatters
-                        .OfType<MetricsPrometheusTextOutputFormatter>().First();
-                });
+                    metrics = metrics.Report.ToApplicationInsights(opts =>
+                    {
+                        opts.InstrumentationKey = System.Environment.GetEnvironmentVariable(AppInsightsInstrumentationKeyVariableName);
+                        opts.ItemsAsCustomDimensions = true;
+                        opts.DefaultCustomDimensionName = "item";
+                    });
+                }
+                else // report to console if AppInsights isn't enabled
+                {
+                    metrics = metrics.Report.ToConsole();
+                }
+                
+                metrics.Build();
             });
             services.AddMetricsReportingHostedService();
         }
 
-        public static void ConfigureJaegerTracing(IServiceCollection services)
+        public static void ConfigureTracing(IServiceCollection services)
         {
-            static ISender BuildSender()
-            {
-                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(JaegerEndpointEnvironmentVar)))
-                {
-                    if (!int.TryParse(Environment.GetEnvironmentVariable(JaegerAgentPortEnvironmentVar),
-                        out var udpPort))
-                        udpPort = DefaultJaegerAgentPort;
-                    return new UdpSender(
-                        Environment.GetEnvironmentVariable(JaegerAgentHostEnvironmentVar) ?? "localhost",
-                        udpPort, 0);
-                }
-
-                return new HttpSender(Environment.GetEnvironmentVariable(JaegerEndpointEnvironmentVar));
-            }
-
             services.AddSingleton<ITracer>(sp =>
             {
-                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                if (IsAppInsightsEnabled)
+                {
+                    var telConfig = sp.GetRequiredService<TelemetryConfiguration>();
+                    var endpoint = new Tracing.ApplicationInsights.Endpoint(Assembly.GetEntryAssembly()?.GetName().Name, Dns.GetHostName(), null);
+                    // name the service after the executing assembly
+                    var tracer = new ApplicationInsightsTracer(telConfig, new ActorScopeManager(), new B3Propagator(),
+                        new DateTimeOffsetTimeProvider(), endpoint);
 
-                var builder = BuildSender();
-                var logReporter = new LoggingReporter(loggerFactory);
+                    return tracer;
+                }
 
-                var remoteReporter = new RemoteReporter.Builder()
-                    .WithLoggerFactory(loggerFactory) // optional, defaults to no logging
-                    .WithMaxQueueSize(100) // optional, defaults to 100
-                    .WithFlushInterval(TimeSpan.FromSeconds(1)) // optional, defaults to TimeSpan.FromSeconds(1)
-                    .WithSender(builder) // optional, defaults to UdpSender("localhost", 6831, 0)
-                    .Build();
-
-                var sampler = new ConstSampler(true); // keep sampling disabled
-
-                // name the service after the executing assembly
-                var tracer = new Tracer.Builder(typeof(Startup).Assembly.GetName().Name)
-                    .WithReporter(new CompositeReporter(remoteReporter, logReporter))
-                    .WithSampler(sampler)
-                    .WithScopeManager(
-                        new ActorScopeManager()); // IMPORTANT: ActorScopeManager needed to properly correlate trace inside Akka.NET
-
-                return tracer.Build();
+                // use the GlobalTracer, otherwise
+                return GlobalTracer.Instance;
             });
+            
         }
 
         public static void ConfigureAkka(IServiceCollection services)
@@ -183,7 +171,6 @@ namespace Petabridge.Phobos.Web
 
             // enable App.Metrics routes
             app.UseMetricsAllMiddleware();
-            app.UseMetricsAllEndpoints();
 
             app.UseEndpoints(endpoints =>
             {

@@ -86,13 +86,7 @@ namespace Petabridge.Phobos.Web
                     "[{POD_NAME}][{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}",
                     theme: AnsiConsoleTheme.Literate)
                 .Filter.ByExcluding(HealthChecksNormalEvents); // Do not want lots of health check info logs in console
-
-            if (SeqBootstrapper.SeqEnabled)
-                // enable Seq
-                loggerConfiguration = loggerConfiguration
-                    .WriteTo.Seq(SeqBootstrapper.LoadSeqUrl())
-                    .Filter.ByExcluding(HealthChecksNormalEvents); // Do not want lots of health check info logs in Seq
-
+                
             // Configure Serilog
             Log.Logger = loggerConfiguration.CreateLogger();
         }
