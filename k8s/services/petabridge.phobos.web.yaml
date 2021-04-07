@@ -68,16 +68,11 @@ spec:
             configMapKeyRef:
               name: pb-configs
               key: environment
-        - name: JAEGER_AGENT_HOST
-          value: "jaeger-agent"    
-        - name: JAEGER_AGENT_PORT
-          value: "6831"
-        - name: JAEGER_SAMPLER_PARAM
-          value: "1"
-        - name: SEQ_SERVICE_HOST 
-          value: "seq"
-        - name: SEQ_SERVICE_PORT
-          value: "8988"
+        - name: APP_INSIGHTS_INSTRUMENTATION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: appinsights
+              key: APP_INSIGHTS_INSTRUMENTATION_KEY
         livenessProbe:
           tcpSocket:
             port: 4055
