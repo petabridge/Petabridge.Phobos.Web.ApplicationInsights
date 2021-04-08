@@ -1,4 +1,4 @@
-# Petabridge.Phobos.Web
+# Petabridge.Phobos.Web.ApplicationInsights
 _This repository contains the source code for the [Phobos + Akka.NET Azure Application Insights Tutorial](https://phobos.petabridge.com/articles/tutorials/end-to-end/appinsights.html)_. 
 
 > NOTE: this solution uses the [shared Phobos + Akka.NET + Azure Application Insights Akka.Cluster Dashboard](http://localhost:8090/articles/dashboards/appinsights-dashboard.html), which you can install in your own Azure subscription for visualizing Phobos' Akka.NET metrics and monitoring your Akka.NET applications.
