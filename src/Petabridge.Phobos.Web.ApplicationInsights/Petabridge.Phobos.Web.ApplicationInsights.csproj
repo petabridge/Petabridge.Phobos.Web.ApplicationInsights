@@ -19,7 +19,7 @@
 		<PackageReference Include="App.Metrics.Reporting.ApplicationInsights" Version="2.1.0" />
 		<PackageReference Include="Petabridge.Tracing.ApplicationInsights" Version="0.2.1" />
 		<PackageReference Include="Phobos.Actor.Cluster" Version="$(PhobosVersion)" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
 		<PackageReference Include="Petabridge.Cmd.Cluster" Version="$(PbmVersion)" />
 		<PackageReference Include="Petabridge.Cmd.Remote" Version="$(PbmVersion)" />
 		<PackageReference Include="Akka.Bootstrap.Docker">
