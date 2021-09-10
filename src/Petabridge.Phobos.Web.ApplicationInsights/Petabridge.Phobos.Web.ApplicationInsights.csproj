@@ -1,9 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 	<Import Project="..\common.props" />
 
-
 	<PropertyGroup>
-		<TargetFramework>$(NetCoreFramework)</TargetFramework>
+		<TargetFrameworks>$(NetCoreFramework);$(NetFramework)</TargetFrameworks>
 		<OutputType>Exe</OutputType>
 		<LangVersion>8</LangVersion>
 	</PropertyGroup>
@@ -19,12 +18,9 @@
 		<PackageReference Include="App.Metrics.Reporting.ApplicationInsights" Version="2.1.0" />
 		<PackageReference Include="Petabridge.Tracing.ApplicationInsights" Version="0.2.1" />
 		<PackageReference Include="Phobos.Actor.Cluster" Version="$(PhobosVersion)" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
 		<PackageReference Include="Petabridge.Cmd.Cluster" Version="$(PbmVersion)" />
 		<PackageReference Include="Petabridge.Cmd.Remote" Version="$(PbmVersion)" />
-		<PackageReference Include="Akka.Bootstrap.Docker">
-			<Version>0.5.3</Version>
-		</PackageReference>
+		<PackageReference Include="Akka.Bootstrap.Docker" Version="0.5.3" />
 		<PackageReference Include="OpenTracing.Contrib.NetCore" Version="0.7.1" />
 		<PackageReference Include="App.Metrics.AspNetCore.All" Version="4.2.0" />
 		<PackageReference Include="App.Metrics.Reporting.Console" Version="4.2.0" />
@@ -33,4 +29,12 @@
 		<PackageReference Include="Serilog.Sinks.Console" Version="4.0.0" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreFramework)'">
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.18" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == '$(NetFramework)'">
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
+	</ItemGroup>
+	
 </Project>
