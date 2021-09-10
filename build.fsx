@@ -293,6 +293,23 @@ let GetDockerProjects =
 
     projects
 
+Target "PublishCodeNetCore" (fun _ ->    
+    ActivateFinalTarget "KillCreatedProcesses"
+   
+    let projects = GetDockerProjects
+        
+    let runSingleProject project =
+        DotNetCli.Publish
+            (fun p -> 
+                { p with
+                    Project = project
+                    Configuration = configuration
+                    Framework = "netcoreapp3.1"
+                    })
+
+    projects|> Seq.iter (runSingleProject)
+)
+
 Target "PublishCode" (fun _ ->    
     ActivateFinalTarget "KillCreatedProcesses"
    
@@ -304,6 +321,7 @@ Target "PublishCode" (fun _ ->
                 { p with
                     Project = project
                     Configuration = configuration
+                    Framework = "net5.0"
                     })
 
     projects|> Seq.iter (runSingleProject)
@@ -328,11 +346,15 @@ Target "BuildDockerImages" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion) 
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-5.0") 
+                    |> append "-t"
+                    |> append (imageName + ":latest-net5.0") 
                     |> append "-t"
                     |> append (imageName + ":latest") 
                     |> append "-t"
-                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion) 
+                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-5.0") 
+                    |> append "-t"
+                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-5.0") 
                     |> append "-t"
                     |> append (remoteRegistryUrl + "/" + imageName + ":latest") 
                     |> append "."
@@ -341,7 +363,9 @@ Target "BuildDockerImages" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion) 
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-5.0")  
+                    |> append "-t"
+                    |> append (imageName + ":latest-5.0") 
                     |> append "-t"
                     |> append (imageName + ":latest") 
                     |> append "."
@@ -349,7 +373,65 @@ Target "BuildDockerImages" (fun _ ->
 
         let composedGetDirName (p:string) =
             System.IO.Path.GetDirectoryName p
+            
+        ExecProcess(fun info -> 
+                info.FileName <- "docker"
+                info.WorkingDirectory <- composedGetDirName projectPath
+                info.Arguments <- args) (System.TimeSpan.FromMinutes 5.0) (* Reasonably long-running task. *)
 
+    let runSingleProject project =
+        let projectName = composedGetFileNameWithoutExtension project
+        let imageName = mapDockerImageName projectName
+        let result = match imageName with
+                        | None -> 0
+                        | Some(name) -> buildDockerImage name project
+        if result <> 0 then failwithf "docker build failed. %s" project
+
+    projects |> Seq.iter (runSingleProject)
+)
+
+Target "BuildDockerImagesNetCore" (fun _ ->
+    let projects = GetDockerProjects
+
+    let remoteRegistryUrl = getBuildParamOrDefault "remoteRegistry" ""
+
+    let composedGetFileNameWithoutExtension (p:string) =
+        System.IO.Path.GetFileNameWithoutExtension p
+
+    let buildDockerImage imageName projectPath =
+        
+        let composedGetDirName (p:string) =
+            System.IO.Path.GetDirectoryName p
+            
+        let projectDir = composedGetDirName projectPath 
+            
+        let args = 
+            if(hasBuildParam "remoteRegistry") then
+                StringBuilder()
+                    |> append "build"
+                    |> append "-t"
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append "-t"
+                    |> append (imageName + ":latest-3.1") 
+                    |> append "-t"
+                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append "-t"
+                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-3.1")
+                    |> append "-f"                    
+                    |> append "Dockerfile.3.1"
+                    |> append "."                    
+                    |> toText
+            else
+                StringBuilder()
+                    |> append "build"
+                    |> append "-t"
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append "-t"
+                    |> append (imageName + ":latest-3.1") 
+                    |> append "-f"                    
+                    |> append "Dockerfile.3.1"
+                    |> append "."                    
+                    |> toText
 
         ExecProcess(fun info -> 
                 info.FileName <- "docker"
@@ -425,6 +507,7 @@ Target "Help" <| fun _ ->
 Target "BuildRelease" DoNothing
 Target "All" DoNothing
 Target "Docker" DoNothing
+Target "DockerNetCore" DoNothing
 Target "Nuget" DoNothing
 
 // build dependencies
@@ -441,6 +524,7 @@ Target "Nuget" DoNothing
 "Clean" ==> "BuildRelease" ==> "Docfx"
 
 // Docker
+"BuildRelease" ==> "PublishCodeNetCore" ==> "BuildDockerImagesNetCore" ==> "DockerNetCore"
 "BuildRelease" ==> "PublishCode" ==> "BuildDockerImages" ==> "Docker"
 
 // all
