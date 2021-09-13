@@ -30,7 +30,7 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreFramework)'">
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.18" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == '$(NetFramework)'">
