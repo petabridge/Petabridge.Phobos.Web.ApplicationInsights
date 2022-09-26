@@ -14,7 +14,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Akka.Logger.Serilog" Version="1.4.26" />
+		<PackageReference Include="Akka.Logger.Serilog" Version="1.4.42" />
 		<PackageReference Include="App.Metrics.Reporting.ApplicationInsights" Version="2.2.0" />
 		<PackageReference Include="Petabridge.Tracing.ApplicationInsights" Version="0.3.0" />
 		<PackageReference Include="Phobos.Actor.Cluster" Version="$(PhobosVersion)" />
