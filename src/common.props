@@ -18,7 +18,7 @@
     <NetFramework>net5.0</NetFramework>
     <NBenchVersion>1.2.2</NBenchVersion>
     <XunitVersion>2.4.1</XunitVersion>
-    <TestSdkVersion>17.3.1</TestSdkVersion>
+    <TestSdkVersion>17.3.2</TestSdkVersion>
     <AkkaVersion>1.4.41</AkkaVersion>
     <PbmVersion>1.1.0</PbmVersion>
     <FluentAssertionsVersion>6.2.0</FluentAssertionsVersion>
