@@ -45,6 +45,11 @@ let outputTests = __SOURCE_DIRECTORY__ @@ "TestResults"
 let outputPerfTests = __SOURCE_DIRECTORY__ @@ "PerfResults"
 let outputNuGet = output @@ "nuget"
 
+let netVersion = "7.0"
+let fullNetVersion = "net7.0"
+let netCoreVersion = "3.1"
+let fullNetCoreVersion = "netcoreapp3.1"
+
 Target "Clean" (fun _ ->
     ActivateFinalTarget "KillCreatedProcesses"
 
@@ -56,8 +61,8 @@ Target "Clean" (fun _ ->
 )
 
 Target "AssemblyInfo" (fun _ ->
-    XmlPokeInnerText "./src/common.props" "//Project/PropertyGroup/VersionPrefix" releaseNotes.AssemblyVersion    
-    XmlPokeInnerText "./src/common.props" "//Project/PropertyGroup/PackageReleaseNotes" (releaseNotes.Notes |> String.concat "\n")
+    XmlPokeInnerText "./src/Directory.Build.props" "//Project/PropertyGroup/VersionPrefix" releaseNotes.AssemblyVersion    
+    XmlPokeInnerText "./src/Directory.Build.props" "//Project/PropertyGroup/PackageReleaseNotes" (releaseNotes.Notes |> String.concat "\n")
 )
 
 Target "RestorePackages" (fun _ ->
@@ -304,7 +309,7 @@ Target "PublishCodeNetCore" (fun _ ->
                 { p with
                     Project = project
                     Configuration = configuration
-                    Framework = "netcoreapp3.1"
+                    Framework = ("netcoreapp" + netCoreVersion)
                     })
 
     projects|> Seq.iter (runSingleProject)
@@ -321,7 +326,7 @@ Target "PublishCode" (fun _ ->
                 { p with
                     Project = project
                     Configuration = configuration
-                    Framework = "net5.0"
+                    Framework = ("net" + netVersion)
                     })
 
     projects|> Seq.iter (runSingleProject)
@@ -346,15 +351,15 @@ Target "BuildDockerImages" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-5.0") 
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-" + netVersion) 
                     |> append "-t"
-                    |> append (imageName + ":latest-net5.0") 
+                    |> append (imageName + ":latest-net" + netVersion) 
                     |> append "-t"
                     |> append (imageName + ":latest") 
                     |> append "-t"
-                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-5.0") 
+                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-" + netVersion) 
                     |> append "-t"
-                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-5.0") 
+                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-" + netVersion) 
                     |> append "-t"
                     |> append (remoteRegistryUrl + "/" + imageName + ":latest") 
                     |> append "."
@@ -363,9 +368,9 @@ Target "BuildDockerImages" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-5.0")  
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-" + netVersion)  
                     |> append "-t"
-                    |> append (imageName + ":latest-5.0") 
+                    |> append (imageName + ":latest-" + netVersion) 
                     |> append "-t"
                     |> append (imageName + ":latest") 
                     |> append "."
@@ -410,13 +415,13 @@ Target "BuildDockerImagesNetCore" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-" + netCoreVersion) 
                     |> append "-t"
-                    |> append (imageName + ":latest-3.1") 
+                    |> append (imageName + ":latest-" + netCoreVersion) 
                     |> append "-t"
-                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append (remoteRegistryUrl + "/" + imageName + ":" + releaseNotes.AssemblyVersion + "-" + netCoreVersion) 
                     |> append "-t"
-                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-3.1")
+                    |> append (remoteRegistryUrl + "/" + imageName + ":latest-" + netCoreVersion)
                     |> append "-f"                    
                     |> append "Dockerfile.3.1"
                     |> append "."                    
@@ -425,9 +430,9 @@ Target "BuildDockerImagesNetCore" (fun _ ->
                 StringBuilder()
                     |> append "build"
                     |> append "-t"
-                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-3.1") 
+                    |> append (imageName + ":" + releaseNotes.AssemblyVersion + "-" + netCoreVersion) 
                     |> append "-t"
-                    |> append (imageName + ":latest-3.1") 
+                    |> append (imageName + ":latest-" + netCoreVersion) 
                     |> append "-f"                    
                     |> append "Dockerfile.3.1"
                     |> append "."                    
