@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:5.0 AS base
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS base
 WORKDIR /app
 
 # should be a comma-delimited list
@@ -17,11 +17,17 @@ RUN dotnet tool install --global pbm
 
 # RUN pbm help
 
-COPY ./bin/Release/net5.0/publish/ /app
+COPY ./bin/Release/net7.0/publish/ /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:5.0 AS app
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS app
 WORKDIR /app
 
 COPY --from=base /app /app
+
+# copy .NET Core global tool
+COPY --from=base /root/.dotnet /root/.dotnet/
+
+# Needed because https://stackoverflow.com/questions/51977474/install-dotnet-core-tool-dockerfile
+ENV PATH="${PATH}:/root/.dotnet/tools"
 
 CMD ["dotnet", "Petabridge.Phobos.Web.ApplicationInsights.dll"]

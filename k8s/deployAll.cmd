@@ -5,13 +5,14 @@ set namespace=phobos-web
 set location=%~dp0/environment
 
 REM AppInsights key is equal to the first commandline argument
-set appinsightsKey=%~1
+set appInsightsConnectionString=%~1
+Echo the string passed to this script is %appInsightsConnectionString%
 
 if "%~1"=="" (
 	REM No App Insights key provided.
-	echo No Application Insights instrumentation key has been provided. Can't complete deployment.
+	echo No Application Insights connection string has been provided. Can't complete deployment.
 	echo Run the script using the following syntax:
-    echo 'deployAll.cmd [appinsights instrumentation key]'
+    echo 'deployAll.cmd [appInsights connection string]'
     exit 1
 ) 
 
@@ -25,7 +26,7 @@ echo "Using namespace [%namespace%] going forward..."
 
 echo "Creating secret for Application Insights API key"
 kubectl create secret generic appinsights -n %namespace% ^
---from-literal=APP_INSIGHTS_INSTRUMENTATION_KEY=%appinsightsKey% 
+--from-literal=APPLICATIONINSIGHTS_CONNECTION_STRING=%appInsightsConnectionString%
 
 echo "Creating configurations from YAML files in [%location%/configs]"
 for %%f in (%location%/configs/*.yaml) do (
