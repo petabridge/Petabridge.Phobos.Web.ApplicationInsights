@@ -3,13 +3,12 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <AkkaVersion>1.4.51</AkkaVersion>
     <PbmVersion>1.3.2</PbmVersion>
-    <OTelVersion>1.6.0</OTelVersion>
-    <OTelInstrumentationVersion>1.5.1-beta.1</OTelInstrumentationVersion>
   </PropertyGroup>
   <!-- Akka.NET Package Versions -->
   <ItemGroup>
     <PackageVersion Include="Akka.Logger.Serilog" Version="1.5.12.1" />
-    <PackageVersion Include="Akka.Bootstrap.Docker" Version="0.5.3" />
+    <PackageVersion Include="Azure.Identity" Version="1.10.4" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.7.0" />
   </ItemGroup>
   <!-- Phobos Package Versions -->
   <ItemGroup>
@@ -22,12 +21,10 @@
   </ItemGroup>
   <!-- OTel Package Versions -->
   <ItemGroup>
-    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.0.0-beta.8" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OTelVersion)" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OTelInstrumentationVersion)" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OTelInstrumentationVersion)" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OTelVersion)" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.6.0-rc.1" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.1.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.7.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.7.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.7.1" />
   </ItemGroup>
   <!-- Serilog Package Versions -->
   <ItemGroup>

@@ -57,11 +57,11 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: CLUSTER_SEEDS
+        - name: CLUSTER__SEEDS
           value: akka.tcp://ClusterSys@phobos-web-0.phobos-web:4055,akka.tcp://ClusterSys@phobos-web-1.phobos-web:4055,akka.tcp://ClusterSys@phobos-web-2.phobos-web:4055
-        - name: CLUSTER_IP
+        - name: CLUSTER__IP
           value: "$(POD_NAME).phobos-web"
-        - name: CLUSTER_PORT
+        - name: CLUSTER__PORT
           value: "4055"
         - name: ASPNETCORE_ENVIRONMENT
           valueFrom:

@@ -9,12 +9,13 @@ using System.IO;
 using System.Net;
 using System.Reflection;
 using Akka.Actor;
-using Akka.Bootstrap.Docker;
 using Akka.Cluster.Hosting;
 using Akka.Configuration;
 using Akka.Hosting;
+using Akka.Logger.Serilog;
 using Akka.Routing;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -33,31 +34,31 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
 {
     public class Startup
     {
+        private const string OTelSourceName = "Petabridge.Phobos.Web.AppInsight";
+        
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            var appInsightsConnectionString = Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
+            if (appInsightsConnectionString is null)
+                throw new Exception("Application Insights connection string was not found in environment variables");
+            
             var resource = ResourceBuilder.CreateDefault()
                 .AddService(Assembly.GetEntryAssembly()!.GetName().Name!, serviceInstanceId: $"{Dns.GetHostName()}");
 
             // enables OpenTelemetry for ASP.NET Core
-            services.AddOpenTelemetry()
+            services
+                .AddOpenTelemetry()
                 .WithTracing(builder =>
                 {
                     builder
                         .SetResourceBuilder(resource)
                         .AddPhobosInstrumentation()
-                        .AddSource("Petabridge.Phobos.Web.AppInsight")
-                        .AddHttpClientInstrumentation(options =>
-                        {
-                            // don't trace HTTP output to Seq
-                            options.FilterHttpRequestMessage = httpRequestMessage =>
-                                !httpRequestMessage.RequestUri?.Host.Contains("seq") ?? false;
-                        })
-                        .AddAspNetCoreInstrumentation(options =>
-                        {
-                            options.Filter = context => !context.Request.Path.StartsWithSegments("/metrics");
-                        });
+                        .AddSource(OTelSourceName)
+                        .AddHttpClientInstrumentation()
+                        .AddAspNetCoreInstrumentation()
+                        .AddAzureMonitorTraceExporter();
                 })
                 .WithMetrics(builder =>
                 {
@@ -65,7 +66,8 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
                         .SetResourceBuilder(resource)
                         .AddPhobosInstrumentation()
                         .AddHttpClientInstrumentation()
-                        .AddAspNetCoreInstrumentation();
+                        .AddAspNetCoreInstrumentation()
+                        .AddAzureMonitorMetricExporter();
                 })
                 .UseAzureMonitor();
 
@@ -73,18 +75,21 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
             ConfigureAkka(services);
         }
 
-
         public static void ConfigureAkka(IServiceCollection services)
         {
             services.AddAkka("ClusterSys", (builder, provider) =>
             {
                 // use our legacy app.conf file
-                var config = ConfigurationFactory.ParseString(File.ReadAllText("app.conf"))
-                    .BootstrapFromDocker()
-                    .UseSerilog();
+                var config = ConfigurationFactory.ParseString(File.ReadAllText("app.conf"));
 
-                builder.AddHocon(config, HoconAddMode.Append)
-                    .WithClustering(new ClusterOptions { Roles = new[] { "console" } })
+                builder
+                    .BootstrapFromDocker(provider)
+                    .AddHocon(config, HoconAddMode.Prepend)
+                    .ConfigureLoggers(loggerBuilder =>
+                    {
+                        loggerBuilder.ClearLoggers();
+                        loggerBuilder.AddLogger<SerilogLogger>();
+                    })
                     .WithPhobos(AkkaRunMode.AkkaCluster) // enable Phobos
                     .StartActors((system, registry) =>
                     {
@@ -94,16 +99,21 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
                             system.ActorOf(Props.Create(() => new RouterForwarderActor(routerActor)), "fwd");
                         registry.TryRegister<RouterForwarderActor>(routerForwarderActor);
                     })
-                    .StartActors((system, registry) =>
-                    {
-                        /*
-                        // start https://cmd.petabridge.com/ for diagnostics and profit
-                        var pbm = PetabridgeCmd.Get(system); // start Pbm
-                        pbm.RegisterCommandPalette(ClusterCommands.Instance);
-                        pbm.RegisterCommandPalette(new RemoteCommands());
-                        pbm.Start(); // begin listening for PBM management commands
-                        */
-                    });
+                    // start https://cmd.petabridge.com/ for diagnostics
+                    .AddPetabridgeCmd(
+                        new PetabridgeCmdOptions
+                        {
+                            // default IP address used to listen for incoming petabridge.cmd client connections
+                            // should be a safe default as it listens on "all network interfaces".
+                            Host = "0.0.0.0",
+                            // default port number used to listen for incoming petabridge.cmd client connections
+                            Port = 9110
+                        }, 
+                        pbmConfig =>
+                        {
+                            pbmConfig.RegisterCommandPalette(ClusterCommands.Instance);
+                            pbmConfig.RegisterCommandPalette(new RemoteCommands());
+                        });
             });
         }
 
@@ -117,9 +127,10 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
             app.UseEndpoints(endpoints =>
             {
                 var tracer = endpoints.ServiceProvider
-                    .GetService<TracerProvider>()
-                    .GetTracer("Petabridge.Phobos.Web.AppInsight");
-                var actors = endpoints.ServiceProvider.GetService<ActorRegistry>();
+                    .GetRequiredService<TracerProvider>()
+                    .GetTracer(OTelSourceName);
+                
+                var actors = endpoints.ServiceProvider.GetRequiredService<ActorRegistry>();
                 endpoints.MapGet("/", async context =>
                 {
                     // fetch actor references from the registry
