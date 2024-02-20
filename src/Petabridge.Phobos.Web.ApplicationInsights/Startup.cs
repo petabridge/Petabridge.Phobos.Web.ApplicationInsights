@@ -57,8 +57,7 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
                         .AddPhobosInstrumentation()
                         .AddSource(OTelSourceName)
                         .AddHttpClientInstrumentation()
-                        .AddAspNetCoreInstrumentation()
-                        .AddAzureMonitorTraceExporter();
+                        .AddAspNetCoreInstrumentation();
                 })
                 .WithMetrics(builder =>
                 {
@@ -66,8 +65,7 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
                         .SetResourceBuilder(resource)
                         .AddPhobosInstrumentation()
                         .AddHttpClientInstrumentation()
-                        .AddAspNetCoreInstrumentation()
-                        .AddAzureMonitorMetricExporter();
+                        .AddAspNetCoreInstrumentation();
                 })
                 .UseAzureMonitor();
 
