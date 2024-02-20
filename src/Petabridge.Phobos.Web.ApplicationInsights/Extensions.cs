@@ -19,8 +19,6 @@ public static class Extensions
     public static AkkaConfigurationBuilder BootstrapFromDocker(this AkkaConfigurationBuilder builder, IServiceProvider provider)
     {
         var options = provider.GetRequiredService<IConfiguration>().GetEnvironmentVariables();
-        if (options is null)
-            return builder;
 
         var remoteOptions = new RemoteOptions
         {
@@ -28,18 +26,18 @@ public static class Extensions
             HostName = "0.0.0.0",
             Port = 4055
         };
-        if (options.Ip is not null)
+        if (options?.Ip is not null)
             remoteOptions.PublicHostName = options.Ip;
-        if (options.Port is not null)
+        if (options?.Port is not null)
             remoteOptions.Port = options.Port;
 
         var clusterOptions = new ClusterOptions
         {
             Roles = new [] {"console"}
         };
-        if (options.Seeds is not null)
+        if (options?.Seeds is not null)
             clusterOptions.SeedNodes = options.Seeds;
-        if (options.Roles is not null)
+        if (options?.Roles is not null)
             clusterOptions.Roles = options.Roles;
 
         builder
@@ -57,11 +55,11 @@ public static class Extensions
             Console.WriteLine("Skipping environment variable bootstrap. No 'CLUSTER' section found");
             return null;
         }
-            
+        
         var options = section.Get<NetworkOptions>();
         if (options is null)
         {
-            Console.WriteLine("Skipping environment variable bootstrap. Could not bind IConfiguration to 'ClusterOptions'");
+            Console.WriteLine("Skipping environment variable bootstrap. Could not bind IConfiguration to 'NetworkOptions'");
             return null;
         }
 
