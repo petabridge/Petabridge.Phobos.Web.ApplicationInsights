@@ -2,6 +2,7 @@
 	<PropertyGroup>
 		<TargetFramework>$(NetFramework)</TargetFramework>
 		<OutputType>Exe</OutputType>
+		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -12,7 +13,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Akka.Logger.Serilog" />
-		<PackageReference Include="Akka.Bootstrap.Docker" />
 		<PackageReference Include="Phobos.Hosting" />
 		<PackageReference Include="Petabridge.Cmd.Cluster" />
 		<PackageReference Include="Petabridge.Cmd.Remote" />
@@ -22,8 +22,6 @@
 		<PackageReference Include="Serilog.Sinks.Console" />
 		<!-- OpenTelemetry -->
 		<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
 		<PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
 	</ItemGroup>
 </Project>

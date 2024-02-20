@@ -8,6 +8,7 @@ using System;
 using System.Net;
 using System.Reflection;
 using Akka.Configuration;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -71,21 +72,17 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
         public const string PodNameProperty = "POD_NAME";
         public const string EnvironmentProperty = "ENVIRONMENT";
 
-        public static readonly Config SerilogConfig =
-            @"akka.loggers =[""Akka.Logger.Serilog.SerilogLogger, Akka.Logger.Serilog""]";
-
         static SerilogBootstrapper()
         {
             var loggerConfiguration = new LoggerConfiguration()
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty(PodNameProperty, SeqBootstrapper.GetServiceName())
                 .Enrich.WithProperty(EnvironmentProperty, SeqBootstrapper.GetEnvironmentName())
-                .Enrich.WithProperty(ServiceNameProperty, Assembly.GetEntryAssembly()?.GetName().Name)
+                .Enrich.WithProperty(ServiceNameProperty, Assembly.GetEntryAssembly()!.GetName().Name!)
                 .WriteTo.Console(
                     outputTemplate:
                     "[{POD_NAME}][{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}",
-                    theme: AnsiConsoleTheme.Literate)
-                .Filter.ByExcluding(HealthChecksNormalEvents); // Do not want lots of health check info logs in console
+                    theme: AnsiConsoleTheme.Literate);
 
             // Configure Serilog
             Log.Logger = loggerConfiguration.CreateLogger();
@@ -96,39 +93,9 @@ namespace Petabridge.Phobos.Web.ApplicationInsights
             return b.ConfigureLogging((hostingContext, logging) =>
             {
                 logging.ClearProviders();
-                logging.AddConsole();
                 logging.AddSerilog();
                 logging.AddEventSourceLogger();
             });
         }
-
-        /// <summary>
-        ///     Inject the HOCON configuration needed to run Serilog.
-        /// </summary>
-        /// <param name="c">The input configuration.</param>
-        public static Config UseSerilog(this Config c)
-        {
-            return c.WithFallback(SerilogConfig);
-        }
-
-        private static bool HealthChecksNormalEvents(LogEvent ev)
-        {
-            var healthCheckRequest = ev.Properties.ContainsKey("RequestPath") &&
-                                     (ev.Properties["RequestPath"].ToString() == "\"/env\"" ||
-                                      ev.Properties["RequestPath"].ToString() == "\"/ready\"");
-
-            var metricsLog = ev.Properties.ContainsKey("kubernetes_annotations_prometheus.io_path") &&
-                             ev.Properties["kubernetes_annotations_prometheus.io_path"].ToString() == "\"/metrics\"";
-
-            return ev.Level < LogEventLevel.Warning && (healthCheckRequest || metricsLog);
-        }
-
-        // We have EF normal logs disabled on appsettings.json level
-        /*private static bool EntityFrameworkNormalEvents(LogEvent ev)
-        {
-            return ev.Level < LogEventLevel.Warning && 
-                   ev.Properties.ContainsKey("SourceContext") && 
-                   ev.Properties["SourceContext"].ToString().Contains("Microsoft.EntityFrameworkCore");
-        }*/
     }
 }
